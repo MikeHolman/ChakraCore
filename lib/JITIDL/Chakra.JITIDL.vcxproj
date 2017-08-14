@@ -18,7 +18,7 @@
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+  <ItemDefinitionGroup>
     <Midl>
       <AdditionalOptions>/protocol ndr64 %(AdditionalOptions)</AdditionalOptions>
     </Midl>

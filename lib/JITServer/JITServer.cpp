@@ -597,66 +597,6 @@ ServerNewInterpreterThunkBlock(
 
 #if DBG
 HRESULT
-ServerIsInterpreterThunkAddr(
-    /* [in] */ handle_t binding,
-    /* [in] */ PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
-    /* [in] */ intptr_t address,
-    /* [in] */ boolean asmjsThunk,
-    /* [out] */ __RPC__out boolean * result)
-{
-    ServerScriptContext * context = (ServerScriptContext*)DecodePointer((void*)scriptContextInfoAddress);
-
-    if (context == nullptr)
-    {
-        *result = false;
-        return RPC_S_INVALID_ARG;
-    }
-    OOPEmitBufferManager * manager = context->GetEmitBufferManager(asmjsThunk != FALSE);
-    if (manager == nullptr)
-    {
-        *result = false;
-        return S_OK;
-    }
-
-    *result = manager->IsInHeap((void*)address);
-
-    return S_OK;
-}
-#endif
-
-HRESULT
-ServerFreeAllocation(
-    /* [in] */ handle_t binding,
-    /* [in] */ __RPC__in PTHREADCONTEXT_HANDLE threadContextInfo,
-    /* [in] */ intptr_t codeAddress,
-    /* [in] */ intptr_t thunkAddress)
-{
-    ServerThreadContext * context = (ServerThreadContext*)DecodePointer(threadContextInfo);
-
-    if (context == nullptr)
-    {
-        Assert(false);
-        return RPC_S_INVALID_ARG;
-    }
-
-    return ServerCallWrapper(context, [&]()->HRESULT
-    {
-        if (CONFIG_FLAG(OOPCFGRegistration) && !thunkAddress)
-        {
-            context->SetValidCallTargetForCFG((PVOID)codeAddress, false);
-        }
-        context->GetCodeGenAllocators()->emitBufferManager.FreeAllocation((void*)codeAddress);
-#if defined(_CONTROL_FLOW_GUARD) && (_M_IX86 || _M_X64)
-        if (thunkAddress)
-        {
-            context->GetJITThunkEmitter()->FreeThunk(thunkAddress);
-        }
-#endif
-        return S_OK;
-    });
-}
-
-HRESULT
 ServerIsNativeAddr(
     /* [in] */ handle_t binding,
     /* [in] */ __RPC__in PTHREADCONTEXT_HANDLE threadContextInfo,
@@ -700,24 +640,109 @@ ServerIsNativeAddr(
 }
 
 HRESULT
-ServerSetIsPRNGSeeded(
+ServerIsInterpreterThunkAddr(
     /* [in] */ handle_t binding,
-    /* [in] */ __RPC__in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
-    /* [in] */ boolean value)
+    /* [in] */ PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
+    /* [in] */ intptr_t address,
+    /* [in] */ boolean asmjsThunk,
+    /* [out] */ __RPC__out boolean * result)
+{
+    ServerScriptContext * context = (ServerScriptContext*)DecodePointer((void*)scriptContextInfoAddress);
+
+    if (context == nullptr)
+    {
+        *result = false;
+        return RPC_S_INVALID_ARG;
+    }
+    OOPEmitBufferManager * manager = context->GetEmitBufferManager(asmjsThunk != FALSE);
+    if (manager == nullptr)
+    {
+        *result = false;
+        return S_OK;
+    }
+
+    *result = manager->IsInHeap((void*)address);
+
+    return S_OK;
+}
+#endif
+
+void
+ServerFreeAllocation(
+    __RPC__in PRPC_ASYNC_STATE pAsync,
+    handle_t binding,
+    __RPC__in PTHREADCONTEXT_HANDLE threadContextInfo,
+    intptr_t codeAddress,
+    intptr_t thunkAddress)
+{
+    ServerThreadContext * context = (ServerThreadContext*)DecodePointer(threadContextInfo);
+
+    HRESULT hr = E_FAIL;
+    RPC_STATUS status;
+    if (context == nullptr)
+    {
+        Assert(false);
+        status = RpcAsyncCompleteCall(pAsync, &hr);
+        if (status != RPC_S_OK)
+        {
+            RpcFailure_fatal_error(HRESULT_FROM_WIN32(status));
+        }
+        return;
+    }
+
+    hr = ServerCallWrapper(context, [&]()->HRESULT
+    {
+        if (CONFIG_FLAG(OOPCFGRegistration) && !thunkAddress)
+        {
+            context->SetValidCallTargetForCFG((PVOID)codeAddress, false);
+        }
+        context->GetCodeGenAllocators()->emitBufferManager.FreeAllocation((void*)codeAddress);
+#if defined(_CONTROL_FLOW_GUARD) && (_M_IX86 || _M_X64)
+        if (thunkAddress)
+        {
+            context->GetJITThunkEmitter()->FreeThunk(thunkAddress);
+        }
+#endif
+        return S_OK;
+    });
+    status = RpcAsyncCompleteCall(pAsync, &hr);
+    if (status != RPC_S_OK)
+    {
+        RpcFailure_fatal_error(HRESULT_FROM_WIN32(status));
+    }
+}
+
+void
+ServerSetPRNGSeeded(
+    __RPC__in PRPC_ASYNC_STATE pAsync,
+    __RPC__in handle_t binding,
+    __RPC__in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress)
 {
     ServerScriptContext * scriptContextInfo = (ServerScriptContext*)DecodePointer(scriptContextInfoAddress);
 
+    HRESULT hr = E_FAIL;
+    RPC_STATUS status;
     if (scriptContextInfo == nullptr)
     {
         Assert(false);
-        return RPC_S_INVALID_ARG;
+        status = RpcAsyncCompleteCall(pAsync, &hr);
+        if (status != RPC_S_OK)
+        {
+            RpcFailure_fatal_error(HRESULT_FROM_WIN32(status));
+        }
+        return;
     }
 
-    return ServerCallWrapper(scriptContextInfo, [&]()->HRESULT
+    hr = ServerCallWrapper(scriptContextInfo, [&]()->HRESULT
     {
-        scriptContextInfo->SetIsPRNGSeeded(value != FALSE);
+        scriptContextInfo->SetPRNGSeeded();
         return S_OK;
     });
+    status = RpcAsyncCompleteCall(pAsync, &hr);
+    if (status != RPC_S_OK)
+    {
+        RpcFailure_fatal_error(HRESULT_FROM_WIN32(status));
+    }
 }
 
 HRESULT

@@ -5,3 +5,20 @@
 
 typedef [context_handle_noserialize] PTHREADCONTEXT_HANDLE;
 typedef [context_handle_noserialize] PSCRIPTCONTEXT_HANDLE;
+interface IChakraJIT
+{
+    [async] SetPRNGSeeded();
+    [async] FreeAllocation();
+/*
+    [async] InitializeThreadContext();
+    [async] InitializeScriptContext();
+    [async] CleanupThreadContext();
+    [async] UpdatePropertyRecordMap();
+    [async] AddDOMFastPathHelper();
+    [async] AddModuleRecordInfo();
+    [async] SetWellKnownHostTypeId();
+    [async] CloseScriptContext();
+    [async] CleanupScriptContext();
+    [async] DecommitInterpreterBufferManager();*/
+    //[async] AddModuleRecordInfo();
+}

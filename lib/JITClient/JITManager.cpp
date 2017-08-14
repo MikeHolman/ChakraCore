@@ -348,15 +348,43 @@ JITManager::AddDOMFastPathHelper(
     return hr;
 }
 
+void
+RPC_ENTRY
+SetPRNGSeededCallback(
+    PRPC_ASYNC_STATE pAsync,
+    void * context,
+    RPC_ASYNC_EVENT event
+)
+{
+    HRESULT hr;
+    RPC_STATUS status = RpcAsyncCompleteCall(pAsync, &hr);
+    if (status != RPC_S_OK)
+    {
+        RpcFailure_fatal_error(HRESULT_FROM_WIN32(status));
+    }
+    HeapDelete(pAsync);
+    JITManager::HandleAsyncServerCallResult(hr, RemoteCallType::StateUpdate);
+}
+
 HRESULT
-JITManager::SetIsPRNGSeeded(
-    __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
-    __in boolean value)
+JITManager::SetPRNGSeeded(
+    __in PRPC_ASYNC_STATE pAsync,
+    __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress)
 {
     HRESULT hr = E_FAIL;
+    hr = HRESULT_FROM_WIN32(RpcAsyncInitializeHandle(pAsync, sizeof(RPC_ASYNC_STATE)));
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+
+    pAsync->NotificationType = RpcNotificationTypeCallback;
+    pAsync->u.APC.hThread = 0;
+    pAsync->u.APC.NotificationRoutine = SetPRNGSeededCallback;
+
     RpcTryExcept
     {
-        hr = ClientSetIsPRNGSeeded(m_rpcBindingHandle, scriptContextInfoAddress, value);
+        ClientSetPRNGSeeded(pAsync, m_rpcBindingHandle, scriptContextInfoAddress);
     }
     RpcExcept(RpcExceptionFilter(RpcExceptionCode()))
     {
@@ -540,8 +568,27 @@ JITManager::CloseScriptContext(
     return hr;
 }
 
+void
+RPC_ENTRY
+FreeAllocationCallback(
+    PRPC_ASYNC_STATE pAsync,
+    void * context,
+    RPC_ASYNC_EVENT event
+)
+{
+    HRESULT hr;
+    RPC_STATUS status = RpcAsyncCompleteCall(pAsync, &hr);
+    if (status != RPC_S_OK)
+    {
+        RpcFailure_fatal_error(HRESULT_FROM_WIN32(status));
+    }
+    HeapDelete(pAsync);
+    JITManager::HandleAsyncServerCallResult(hr, RemoteCallType::MemFree);
+}
+
 HRESULT
 JITManager::FreeAllocation(
+    __in PRPC_ASYNC_STATE pAsync,
     __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
     __in intptr_t codeAddress,
     __in intptr_t thunkAddress)
@@ -549,31 +596,19 @@ JITManager::FreeAllocation(
     Assert(IsOOPJITEnabled());
 
     HRESULT hr = E_FAIL;
+    hr = HRESULT_FROM_WIN32(RpcAsyncInitializeHandle(pAsync, sizeof(RPC_ASYNC_STATE)));
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+
+    pAsync->NotificationType = RpcNotificationTypeCallback;
+    pAsync->u.APC.hThread = 0;
+    pAsync->u.APC.NotificationRoutine = FreeAllocationCallback;
+
     RpcTryExcept
     {
-        hr = ClientFreeAllocation(m_rpcBindingHandle, threadContextInfoAddress, codeAddress, thunkAddress);
-    }
-    RpcExcept(RpcExceptionFilter(RpcExceptionCode()))
-    {
-        hr = HRESULT_FROM_WIN32(RpcExceptionCode());
-    }
-    RpcEndExcept;
-
-    return hr;
-}
-
-HRESULT
-JITManager::IsNativeAddr(
-    __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
-    __in intptr_t address,
-    __out boolean * result)
-{
-    Assert(IsOOPJITEnabled());
-
-    HRESULT hr = E_FAIL;
-    RpcTryExcept
-    {
-        hr = ClientIsNativeAddr(m_rpcBindingHandle, threadContextInfoAddress, address, result);
+        ClientFreeAllocation(pAsync, m_rpcBindingHandle, threadContextInfoAddress, codeAddress, thunkAddress);
     }
     RpcExcept(RpcExceptionFilter(RpcExceptionCode()))
     {
@@ -607,6 +642,28 @@ JITManager::RemoteCodeGenCall(
 }
 
 #if DBG
+HRESULT
+JITManager::IsNativeAddr(
+    __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
+    __in intptr_t address,
+    __out boolean * result)
+{
+    Assert(IsOOPJITEnabled());
+
+    HRESULT hr = E_FAIL;
+    RpcTryExcept
+    {
+        hr = ClientIsNativeAddr(m_rpcBindingHandle, threadContextInfoAddress, address, result);
+    }
+        RpcExcept(RpcExceptionFilter(RpcExceptionCode()))
+    {
+        hr = HRESULT_FROM_WIN32(RpcExceptionCode());
+    }
+    RpcEndExcept;
+
+    return hr;
+}
+
 HRESULT
 JITManager::IsInterpreterThunkAddr(
     __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,

@@ -558,7 +558,9 @@ namespace Js
         // This list is only used to invalidate the status of types. The type itself contains a boolean indicating whether it
         // and prototypes contain only writable data properties, which is reset upon invalidating the status.
         Field(JsUtil::List<Type *> *) typesEnsuredToHaveOnlyWritableDataPropertiesInItAndPrototypeChain;
-
+#if ENABLE_OOP_NATIVE_CODEGEN
+        Field(PRPC_ASYNC_STATE) isPRNGSeededServerState;
+#endif
         Field(uint64) randSeed0, randSeed1;
         Field(bool) isPRNGSeeded;
         Field(bool) inProfileMode;
@@ -1153,7 +1155,7 @@ namespace Js
         bool IsPRNGSeeded() { return isPRNGSeeded; }
         uint64 GetRandSeed0() { return randSeed0; }
         uint64 GetRandSeed1() { return randSeed1; }
-        void SetIsPRNGSeeded(bool val);
+        void SetPRNGSeeded();
         void SetRandSeed0(uint64 rs) { randSeed0 = rs;}
         void SetRandSeed1(uint64 rs) { randSeed1 = rs; }
 

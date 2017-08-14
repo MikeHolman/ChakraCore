@@ -1093,7 +1093,7 @@ StringCommon:
 #if DBG_DUMP
                 OUTPUT_TRACE(Js::PRNGPhase, _u("[PRNG:%x] INIT %I64x %I64x\n"), scriptContext, seed0, seed1);
 #endif
-                scriptContext->GetLibrary()->SetIsPRNGSeeded(true);
+                scriptContext->GetLibrary()->SetPRNGSeeded();
 
 #if ENABLE_TTD
                 if(scriptContext->ShouldPerformReplayAction())

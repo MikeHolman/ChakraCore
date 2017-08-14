@@ -1225,6 +1225,9 @@ namespace Js
         booleanFalse = RecyclerNew(recycler, JavascriptBoolean, false, booleanTypeStatic);
 
         isPRNGSeeded = false;
+#if ENABLE_OOP_NATIVE_CODEGEN
+        isPRNGSeededServerState = nullptr;
+#endif
         randSeed0 = 0;
         randSeed1 = 0;
 
@@ -7192,16 +7195,18 @@ namespace Js
         return this->builtinFunctions;
     }
 
-    void JavascriptLibrary::SetIsPRNGSeeded(bool val)
+    void JavascriptLibrary::SetPRNGSeeded()
     {
-        this->isPRNGSeeded = val;
-#if ENABLE_NATIVE_CODEGEN
-        if (JITManager::GetJITManager()->IsOOPJITEnabled() && JITManager::GetJITManager()->IsConnected())
+        this->isPRNGSeeded = true;
+#if ENABLE_OOP_NATIVE_CODEGEN
+        if (this->isPRNGSeededServerState == nullptr && JITManager::GetJITManager()->IsOOPJITEnabled() && JITManager::GetJITManager()->IsConnected())
         {
             PSCRIPTCONTEXT_HANDLE remoteScriptContext = this->scriptContext->GetRemoteScriptAddr();
             if (remoteScriptContext)
             {
-                HRESULT hr = JITManager::GetJITManager()->SetIsPRNGSeeded(remoteScriptContext, val);
+                // allocate this in the heap so that struct is available even if JavascriptLibrary is freed before async call completes
+                this->isPRNGSeededServerState = HeapNew(RPC_ASYNC_STATE);
+                HRESULT hr = JITManager::GetJITManager()->SetPRNGSeeded(this->isPRNGSeededServerState, remoteScriptContext);
                 JITManager::HandleServerCallResult(hr, RemoteCallType::StateUpdate);
             }
         }

@@ -82,18 +82,14 @@ public:
         __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress);
 
     HRESULT FreeAllocation(
+        __in PRPC_ASYNC_STATE pAsync,
         __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
         __in intptr_t codeAddress,
         __in intptr_t thunkAddress);
 
-    HRESULT SetIsPRNGSeeded(
-        __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
-        __in boolean value);
-
-    HRESULT IsNativeAddr(
-        __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
-        __in intptr_t address,
-        __out boolean * result);
+    HRESULT SetPRNGSeeded(
+        __in PRPC_ASYNC_STATE pAsync,
+        __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress);
 
     HRESULT RemoteCodeGenCall(
         __in CodeGenWorkItemIDL *workItemData,
@@ -101,6 +97,11 @@ public:
         __out JITOutputIDL *jitData);
 
 #if DBG
+    HRESULT IsNativeAddr(
+        __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
+        __in intptr_t address,
+        __out boolean * result);
+
     HRESULT IsInterpreterThunkAddr(
         __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
         __in intptr_t address,
@@ -113,6 +114,7 @@ public:
 
     static JITManager * GetJITManager();
     static bool HandleServerCallResult(HRESULT hr, RemoteCallType callType);
+    static bool HandleAsyncServerCallResult(HRESULT hr, RemoteCallType callType);
 private:
     JITManager();
     ~JITManager();
@@ -203,20 +205,15 @@ public:
         { Assert(false); return E_FAIL; }
 
     HRESULT FreeAllocation(
+        __in PRPC_ASYNC_STATE pAsync,
         __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
         __in intptr_t codeAddress,
         __in intptr_t thunkAddress)
         { Assert(false); return E_FAIL; }
 
-    HRESULT SetIsPRNGSeeded(
-        __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
-        __in boolean value)
-        { Assert(false); return E_FAIL; }
-
-    HRESULT IsNativeAddr(
-        __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
-        __in intptr_t address,
-        __out boolean * result)
+    HRESULT SetPRNGSeeded(
+        __in PRPC_ASYNC_STATE pAsync,
+        __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress)
         { Assert(false); return E_FAIL; }
 
     HRESULT RemoteCodeGenCall(
@@ -226,6 +223,14 @@ public:
         { Assert(false); return E_FAIL; }
 
 #if DBG
+    HRESULT IsNativeAddr(
+        __in PTHREADCONTEXT_HANDLE threadContextInfoAddress,
+        __in intptr_t address,
+        __out boolean * result)
+    {
+        Assert(false); return E_FAIL;
+    }
+
     HRESULT IsInterpreterThunkAddr(
         __in PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
         __in intptr_t address,
@@ -239,6 +244,7 @@ public:
 
     static JITManager * GetJITManager()
         { return &s_jitManager; }
+    static bool HandleAsyncServerCallResult(HRESULT hr, RemoteCallType callType) { Assert(UNREACHED); }
     static bool HandleServerCallResult(HRESULT hr, RemoteCallType callType) { Assert(UNREACHED); }
 private:
     static JITManager s_jitManager;

@@ -3181,7 +3181,13 @@ NativeCodeGenerator::FreeNativeCodeGenAllocation(void* codeAddress, void* thunkA
     if (JITManager::GetJITManager()->IsOOPJITEnabled())
     {
         ThreadContext * context = this->scriptContext->GetThreadContext();
-        HRESULT hr = JITManager::GetJITManager()->FreeAllocation(context->GetRemoteThreadContextAddr(), (intptr_t)codeAddress, (intptr_t)thunkAddress);
+        PRPC_ASYNC_STATE pAsync = HeapNewNoThrowStructZ(RPC_ASYNC_STATE);
+        if (!pAsync)
+        {
+            // Review: do we care to handle OOM here?
+            Js::Throw::FatalInternalError();
+        }
+        HRESULT hr = JITManager::GetJITManager()->FreeAllocation(pAsync, context->GetRemoteThreadContextAddr(), (intptr_t)codeAddress, (intptr_t)thunkAddress);
         JITManager::HandleServerCallResult(hr, RemoteCallType::MemFree);
     }
     else if(this->backgroundAllocators)
@@ -3671,6 +3677,31 @@ bool NativeCodeGenerator::TryAggressiveInlining(Js::FunctionBody *const topFunct
 }
 
 #if _WIN32
+bool
+JITManager::HandleAsyncServerCallResult(HRESULT hr, RemoteCallType callType)
+{
+    switch (hr)
+    {
+    case S_OK:
+        return true;
+    case VBSERR_OutOfStack:
+    case E_ABORT:
+        return false;
+    case E_OUTOFMEMORY:
+        if (callType == RemoteCallType::MemFree)
+        {
+            // if freeing memory fails due to OOM, it means we failed to fill with debug breaks -- so failfast
+            RpcFailure_fatal_error(hr);
+        }
+        else
+        {
+            return false;
+        }
+    default:
+        RpcFailure_fatal_error(hr);
+        return false;
+    }
+}
 bool
 JITManager::HandleServerCallResult(HRESULT hr, RemoteCallType callType)
 {

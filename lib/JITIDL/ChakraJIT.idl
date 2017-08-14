@@ -23,6 +23,10 @@ cpp_quote("#endif //__JITTypes_h__")
 ]
 interface IChakraJIT
 {
+    const long DEFAULT_ASYNC_DELAY = 10000;
+    const short APP_ERROR = -1;
+    const char* DEFAULT_PROTOCOL_SEQUENCE = "ncacn_ip_tcp";
+    const char* DEFAULT_ENDPOINT = "8765";
     HRESULT Shutdown([in] handle_t binding);
 
     HRESULT InitializeThreadContext(
@@ -92,16 +96,9 @@ interface IChakraJIT
         [in] PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
         [in] boolean asmJsManager);
 
-    HRESULT IsNativeAddr(
+    HRESULT SetPRNGSeeded(
         [in] handle_t binding,
-        [in] PTHREADCONTEXT_HANDLE threadContextInfoAddress,
-        [in] CHAKRA_PTR address,
-        [out] boolean * result);
-
-    HRESULT SetIsPRNGSeeded(
-        [in] handle_t binding,
-        [in] PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,
-        [in] boolean value);
+        [in] PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress);
 
     HRESULT RemoteCodeGen(
         [in] handle_t binding,
@@ -110,6 +107,12 @@ interface IChakraJIT
         [out] JITOutputIDL * jitData);
 
 #if DBG
+    HRESULT IsNativeAddr(
+        [in] handle_t binding,
+        [in] PTHREADCONTEXT_HANDLE threadContextInfoAddress,
+        [in] CHAKRA_PTR address,
+        [out] boolean * result);
+
     HRESULT IsInterpreterThunkAddr(
         [in] handle_t binding,
         [in] PSCRIPTCONTEXT_HANDLE scriptContextInfoAddress,

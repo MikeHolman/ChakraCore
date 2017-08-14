@@ -382,9 +382,9 @@ ServerScriptContext::GetModuleExportSlotArrayAddress(uint moduleIndex, uint slot
 }
 
 void
-ServerScriptContext::SetIsPRNGSeeded(bool value)
+ServerScriptContext::SetPRNGSeeded()
 {
-    m_isPRNGSeeded = value;
+    m_isPRNGSeeded = true;
 }
 
 void

@@ -1666,7 +1666,10 @@ namespace TTD
         {
             TTDAssert(wcscmp(snpCtx->ContextSRC.Contents, intoCtx->GetUrl()) == 0, "Make sure the src uri values are the same.");
 
-            intoCtx->GetLibrary()->SetIsPRNGSeeded(snpCtx->IsPNRGSeeded);
+            if (snpCtx->IsPNRGSeeded)
+            {
+                intoCtx->GetLibrary()->SetPRNGSeeded();
+            }
             intoCtx->GetLibrary()->SetRandSeed0(snpCtx->RandomSeed0);
             intoCtx->GetLibrary()->SetRandSeed1(snpCtx->RandomSeed1);
             inflator->AddScriptContext(snpCtx->ScriptContextLogId, intoCtx);
